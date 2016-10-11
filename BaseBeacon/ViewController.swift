@@ -24,7 +24,7 @@ class ViewController: UIViewController, CLLocationManagerDelegate {
     //beaconの値取得関係の変数
     var trackLocationManager : CLLocationManager!
     var beaconRegion : CLBeaconRegion!
-    
+
     override func viewDidLoad() {
         super.viewDidLoad()
         
@@ -35,7 +35,7 @@ class ViewController: UIViewController, CLLocationManagerDelegate {
         self.trackLocationManager.delegate = self;
         
         // BeaconのUUIDを設定
-        let uuid:NSUUID? = NSUUID(UUIDString: "00000000-7DE6-1001-B000-001C4DF13E76")
+        let uuid:UUID? = UUID(uuidString: "00000000-7DE6-1001-B000-001C4DF13E76")
         
         //Beacon領域を作成
         self.beaconRegion = CLBeaconRegion(proximityUUID: uuid!, identifier: "net.noumenon-th")
@@ -44,17 +44,16 @@ class ViewController: UIViewController, CLLocationManagerDelegate {
         let status = CLLocationManager.authorizationStatus()
         
         // まだ認証が得られていない場合は、認証ダイアログを表示
-        if(status == CLAuthorizationStatus.NotDetermined) {
+        if(status == CLAuthorizationStatus.notDetermined) {
             
             self.trackLocationManager.requestAlwaysAuthorization();
         }
-        
         
     }
     
     
     //位置認証のステータスが変更された時に呼ばれる
-    func locationManager(manager: CLLocationManager, didChangeAuthorizationStatus status: CLAuthorizationStatus) {
+    func locationManager(_ manager: CLLocationManager, didChangeAuthorization status: CLAuthorizationStatus) {
         
         // 認証のステータス
         let statusStr = "";
@@ -64,7 +63,7 @@ class ViewController: UIViewController, CLLocationManagerDelegate {
         print(" CLAuthorizationStatus: \(statusStr)")
         
         //観測を開始させる
-        trackLocationManager.startMonitoringForRegion(self.beaconRegion)
+        trackLocationManager.startMonitoring(for: self.beaconRegion)
         
     }
     
@@ -72,42 +71,40 @@ class ViewController: UIViewController, CLLocationManagerDelegate {
     
     
     //観測の開始に成功すると呼ばれる
-    func locationManager(manager: CLLocationManager, didStartMonitoringForRegion region: CLRegion) {
+    func locationManager(_ manager: CLLocationManager, didStartMonitoringFor region: CLRegion) {
         
         print("didStartMonitoringForRegion");
         
         //観測開始に成功したら、領域内にいるかどうかの判定をおこなう。→（didDetermineState）へ
-        trackLocationManager.requestStateForRegion(self.beaconRegion);
+        trackLocationManager.requestState(for: self.beaconRegion);
     }
     
     
     
     
     //領域内にいるかどうかを判定する
-    func locationManager(manager: CLLocationManager, didDetermineState state: CLRegionState, forRegion inRegion: CLRegion) {
+    func locationManager(_ manager: CLLocationManager, didDetermineState state: CLRegionState, for inRegion: CLRegion) {
         
         switch (state) {
             
-        case .Inside: // すでに領域内にいる場合は（didEnterRegion）は呼ばれない
+        case .inside: // すでに領域内にいる場合は（didEnterRegion）は呼ばれない
             
-            trackLocationManager.startRangingBeaconsInRegion(beaconRegion);
+            trackLocationManager.startRangingBeacons(in: beaconRegion);
             // →(didRangeBeacons)で測定をはじめる
-            break;
+            break
             
-        case .Outside:
+        case .outside:
             
             // 領域外→領域に入った場合はdidEnterRegionが呼ばれる
-            break;
+            reset()
+            break
             
-        case .Unknown:
+        case .unknown:
             
             // 不明→領域に入った場合はdidEnterRegionが呼ばれる
-            break;
+            reset()
+            break
             
-            //なんで警告が出ているのか要チェック
-            //swiftはbreke文いらないんやっけ？
-        default:
-            break;
         }
     }
     
@@ -115,23 +112,23 @@ class ViewController: UIViewController, CLLocationManagerDelegate {
     
     
     //領域に入った時
-    func locationManager(manager: CLLocationManager, didEnterRegion region: CLRegion) {
+    func locationManager(_ manager: CLLocationManager, didEnterRegion region: CLRegion) {
         // →(didRangeBeacons)で測定をはじめる
-        self.trackLocationManager.startRangingBeaconsInRegion(self.beaconRegion)
+        self.trackLocationManager.startRangingBeacons(in: self.beaconRegion)
     }
     
     
     
     
     //領域から出た時
-    func locationManager(manager: CLLocationManager, didExitRegion region: CLRegion) {
+    func locationManager(_ manager: CLLocationManager, didExitRegion region: CLRegion) {
         //測定を停止する
-        self.trackLocationManager.stopRangingBeaconsInRegion(self.beaconRegion)
+        self.trackLocationManager.stopRangingBeacons(in: self.beaconRegion)
     }
     
     
     //領域内にいるので測定をする
-    func locationManager(manager: CLLocationManager, didRangeBeacons beacons: [CLBeacon], inRegion region: CLBeaconRegion){
+    func locationManager(_ manager: CLLocationManager, didRangeBeacons beacons: [CLBeacon], in region: CLBeaconRegion){
         let beacon = beacons[0]
         
         /*
@@ -143,24 +140,23 @@ class ViewController: UIViewController, CLLocationManagerDelegate {
         accuracy        :   精度
         rssi            :   電波強度
         */
+        if(beacons.count > 0){
+            if(beacon.proximity == CLProximity.immediate) {
+                self.proximity.text = "Immediate"
+            } else if (beacon.proximity == CLProximity.near) {
+                self.proximity.text = "Near"
+            } else if (beacon.proximity == CLProximity.far) {
+                self.proximity.text = "Far"
+            }
+            self.uuid.text     = beacon.proximityUUID.uuidString
+            self.major.text    = "\(beacon.major)"
+            self.minor.text    = "\(beacon.minor)"
+            self.accuracy.text = "\(beacon.accuracy)"
+            self.rssi.text     = "\(beacon.rssi)"
         
-        
-        if (beacon.proximity == CLProximity.Unknown) {
-            self.proximity.text = "Unknown Proximity"
+        }else{
             reset()
-            return
-        } else if (beacon.proximity == CLProximity.Immediate) {
-            self.proximity.text = "Immediate"
-        } else if (beacon.proximity == CLProximity.Near) {
-            self.proximity.text = "Near"
-        } else if (beacon.proximity == CLProximity.Far) {
-            self.proximity.text = "Far"
         }
-        self.uuid.text     = beacon.proximityUUID.UUIDString
-        self.major.text    = "\(beacon.major)"
-        self.minor.text    = "\(beacon.minor)"
-        self.accuracy.text = "\(beacon.accuracy)"
-        self.rssi.text     = "\(beacon.rssi)"
     }
     
     
